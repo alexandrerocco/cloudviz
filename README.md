@@ -15,6 +15,7 @@ If you're looking for easiest way to start graphing CloudWatch data, check out [
    * [gviz_api](http://code.google.com/p/google-visualization-python/) - a Python library for creating Google Visualization API data sources
    * [pytz](https://pypi.python.org/pypi/pytz/) - world timezone definitions
 3. Set **AWS_ACCESS_KEY_ID **and **AWS_SECRET_ACCESS_KEY **in <code>settings.py</code>
+   * You also have the alternative to use boto [config system](http://boto.readthedocs.org/en/latest/boto_config_tut.html)
 4. Make <code>cloudviz.py</code> web-accessible using your favorite HTTP server
 
 # Using cloudviz

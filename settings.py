@@ -21,7 +21,9 @@ limitations under the License.
 from datetime import datetime, timedelta
 from operator import itemgetter
 
-# Uncomment and set to your Amazon credentials:
+# Uncomment the lines bellow to set to your AWS credentials.
+# Otherwise it will use the config that is provided by boto
+# See: http://boto.readthedocs.org/en/latest/boto_config_tut.html
 #AWS_ACCESS_KEY_ID = ""
 #AWS_SECRET_ACCESS_KEY = ""
 
