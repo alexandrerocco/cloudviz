@@ -1,0 +1,249 @@
+<html>
+<!--
+Sample dashboard for AWS CloudWatch data, combines data from multiple
+instances and types of AWS services onto one graph set.  Includes auto
+refresh, and controls for selecting time span of graphs, data interval,
+and local time zone.
+Requires Cloudviz script to query CloudWatch API and format
+data for display using Google Visualization charts.
+See http://github.com/mbabineau/cloudviz
+Written by Ross Oliver, reo@tech-mavens.com, who hereby places
+this work in the public domain
+-->
+<head>
+<title>AWS CloudWatch Dashboard</title>
+<script type="text/javascript" src="http://www.google.com/jsapi" ></script>
+<script type=text/javascript" src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
+<script type="text/javascript">
+    google.load('visualization', '1', {packages: ['corechart']});
+</script>
+<script type="text/javascript">
+    var defaultRange = 24;
+    var range = defaultRange;     // range of time covered by chart, in hours
+    var defaultTimezone = "US/Pacific";
+    var timezone = defaultTimezone;
+    var region = "us-west-2";     // change to to your AWS region
+    var defaultPeriod = 300;
+    var period = defaultPeriod;   // interval between sample points, in seconds
+    var lineOptions = { 'interpolateNulls': true,
+			'legend': { 'position': 'top' },
+		      };
+    var firstTime = true;
+    var cloudvizPath = '/cloudviz.py';
+    var wrapper = [];
+
+    var chart = [
+            {
+	        "container": "latency",
+	        "cloudviz":
+                    {  
+                        "namespace": "AWS/ELB",       // CloudWatch namespace (string)
+                        "metric": "Latency",	      // CloudWatch metric (string)
+                        "unit": "Seconds",            // CloudWatch unit (string)
+                        "statistics": ["Average","Maximum"],      // CloudWatch statistics (list of strings)
+                        "period": period,             // CloudWatch period (int)
+                        "range": range,
+                        "timezone": timezone,
+			"region": region,
+                        "cloudwatch_queries":         // (list of dictionaries)
+                        [   
+                            {
+                                "prefix": "Latency ",   // label prefix for associated data sets (string)
+                                "dimensions": { "LoadBalancerName": "web-elb-1"} // CloudWatch dimensions (dictionary)
+                            },
+                        ]
+                     },
+	    },
+            {
+	        "container": "requests",
+		"cloudviz":
+                    {  
+                        "namespace": "AWS/ELB",
+                        "metric": "RequestCount",
+                        "unit": "Count",
+                        "statistics": ["Sum"],
+                        "period": period,
+			"calc_rate": false,
+                        "range": range,
+                        "timezone": timezone,
+			"region": region,
+                        "cloudwatch_queries":
+                        [   
+                            {
+                                "prefix": "Requests ",
+                                "dimensions": { "LoadBalancerName": "web-elb-1"}
+                            },
+                        ]
+                     },
+
+            },
+            {
+	        "container": "webcpu",
+		"cloudviz":
+                     {  
+                        "namespace": "AWS/EC2",
+                        "metric": "CPUUtilization",
+                        "unit": "Percent",
+                        "statistics": ["Average"],
+                        "period": period,
+                        "range": range,
+                        "timezone": timezone,
+			"region": region,
+			"calc_rate": false,
+                        "cloudwatch_queries":
+                        [   
+                            {
+                                "prefix": "Web 1 CPU ",
+                                "dimensions": { "InstanceId": "i-b9c6bbb0"}
+                            },
+                            {
+                                "prefix": "Web 2 CPU ",
+                                "dimensions": { "InstanceId": "i-2360942b"}
+                            },
+                        ]
+                     },
+            },
+            {
+	        "container": "filercpu",
+		"cloudviz":
+                     {  
+                        "namespace": "AWS/EC2",
+                        "metric": "CPUUtilization",
+                        "unit": "Percent",
+                        "statistics": ["Average"],
+                        "period": period,
+                        "range": range,
+                        "timezone": timezone,
+			"region": region,
+			"calc_rate": false,
+                        "cloudwatch_queries":
+                        [   
+                            {
+                                "prefix": "Filer 1 CPU ",
+                                "dimensions": { "InstanceId": "i-2360942b"}
+                            },
+                            {
+                                "prefix": "Filer 2 CPU ",
+                                "dimensions": { "InstanceId": "i-b9c6bbb0"}
+                            }
+                        ]
+                     },
+            },
+            {
+	        "container": "dbcpu",
+		"cloudviz":
+                     {  
+                        "namespace": "AWS/RDS",
+                        "metric": "CPUUtilization",
+                        "unit": "Percent",
+                        "statistics": ["Average"],
+                        "period": period,
+                        "range": range,
+                        "timezone": timezone,
+			"region": region,
+			"calc_rate": false,
+                        "cloudwatch_queries":
+                        [   
+                            {
+                                "prefix": "Database CPU ",
+                                "dimensions": { "DBInstanceIdentifier": "web-db-1"}
+                            },
+                        ]
+                     },
+            },
+	];
+
+    function initDash() {
+        var i, qs, url;
+
+	for (i = 0; i < chart.length; i++) {
+            qs = JSON.stringify(chart[i].cloudviz);
+            url = 'http://' + window.location.host + cloudvizPath + '?qs=' + qs;
+            wrapper[i] = new google.visualization.ChartWrapper();
+	    wrapper[i].setChartType('LineChart');
+	    wrapper[i].setDataSourceUrl(url);
+	    wrapper[i].setOptions(lineOptions);
+	    wrapper[i].setContainerId(chart[i].container);
+	}
+    }
+
+    function drawDash() {
+        var i;
+
+	if ( firstTime ) {
+	    initDash();
+	    firstTime = false;
+	}
+	for (i = 0; i < chart.length; i++) {
+	    wrapper[i].draw();
+	}
+	now = new Date();
+	document.getElementById('clock').innerHTML = now.toString();
+	setTimeout("drawDash();",60000);
+    }
+
+    function updateDash() {
+	var s, i, qs, url;
+
+	s = document.forms[0].elements["range"];
+	i = s.selectedIndex;
+	range = parseInt(s.options[i].value);
+	s = document.forms[0].elements["timezone"];
+	i = s.selectedIndex;
+        timezone = s.options[i].value;
+	s = document.forms[0].elements["period"];
+	i = s.selectedIndex;
+        period = s.options[i].value;
+	for (i = 0; i < chart.length; i++) {
+	    chart[i].cloudviz.range = range;
+	    chart[i].cloudviz.period = period;
+	    chart[i].cloudviz.timezone = timezone;
+            qs = JSON.stringify(chart[i].cloudviz);
+            url = 'http://' + window.location.host + cloudvizPath + '?qs=' + qs;
+	    wrapper[i].setDataSourceUrl(url);
+	}
+	drawDash();
+    }
+
+    google.setOnLoadCallback(drawDash);
+</script>
+</head>
+<body style="font-family: Arial;border: 0 none;">
+<h3>AWS CloudWatch Dashboard</h3>
+<p>Current time: <span id="clock"></span></p>
+<form name="rangeSelect" action="#">
+Select time zone: <select size="1" id="tzSelector" name="timezone" onchange="updateDash()">
+<option value="US/Pacific" selected>US/Pacific</option>
+<option value="US/Mountain">US/Mountain</option>
+<option value="US/Central">US/Central</option>
+<option value="US/Eastern">US/Eastern</option>
+<option value="UTC">UTC</option>
+</select>
+Select time interval: <select size="1" id="rangeSelector" name="range" onchange="updateDash()">
+<option value="336">14 days</option>
+<option value="168">7 days</option>
+<option value="120">5 days</option>
+<option value="72">3 days</option>
+<option value="48">2 days</option>
+<option value="24" selected>24 hours</option>
+<option value="12">12 hours</option>
+<option value="6">6 hours</option>
+<option value="4">4 hours</option>
+<option value="2">2 hours</option>
+<option value="1">1 hour</option>
+</select>
+Select period: <select size="1" id="periodSelector" name="period" onchange="updateDash()">
+<option value="60">1 minute</option>
+<option value="300" selected>5 minute</option>
+<option value="900">15 minute</option>
+<option value="3600">1 hour</option>
+<option value="86400">1 day</option>
+</select>
+</form>
+        <div id="requests" style="width: 600px; height: 300px; float: left;"></div>
+        <div id="latency" style="width: 600px; height: 300px;float: left;"></div>
+        <div id="webcpu" style="width: 600px; height: 300px;float: left;"></div>
+        <div id="filercpu" style="width: 600px; height: 300px;float: left;"></div>
+        <div id="dbcpu" style="width: 600px; height: 300px;float: left;"></div>
+</body>
+</html>
