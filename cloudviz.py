@@ -32,7 +32,7 @@ import sys
 import cgi
 import operator
 from datetime import datetime, timedelta
-from django.utils import simplejson
+import json
 from pytz import timezone
 import pytz
 
@@ -174,7 +174,7 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None, aws_
 def main():
     # Parse the query string
     fs = cgi.FieldStorage()
-    cloudviz_query = simplejson.loads(fs.getvalue('qs'))
+    cloudviz_query = json.loads(fs.getvalue('qs'))
     
     # Convert tqx to dict; tqx is a set of colon-delimited key/value pairs separated by semicolons
     tqx = {}
